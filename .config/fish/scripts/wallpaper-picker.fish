@@ -12,6 +12,6 @@ command -q ghostty; or fail "'ghostty' is not installed or is not on PATH"
 command -q yazi; or fail "'yazi' is not installed or is not on PATH"
 test -d "$themes_dir"; or fail "theme directory does not exist: $themes_dir"
 
-# Ghostty's GTK backend does not support a custom app_id/class. The title is
-# therefore the stable Sway matching surface for the floating picker rule.
+# The stable window title is matched by the termfilechooser floating rule in
+# both the Sway and Niri configurations.
 exec env YAZI_CONFIG_HOME="$HOME/.config/yazi-wallpaper" ghostty --title='Wallpaper Picker' -e yazi "$themes_dir"

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ -n "${NIRI_SOCKET:-}" ] && niri msg version >/dev/null 2>&1; then
+    windows=$(niri msg --json windows 2>/dev/null) || exit 2
+    id=$(printf '%s\n' "$windows" \
+        | jq -r 'if type != "array" then error("expected Niri windows array") else first(.[] | select(.title == "Wallpaper Picker") | .id) // empty end' 2>/dev/null) || exit 2
+    [ -n "$id" ] || exit 1
+    niri msg action focus-window --id "$id" >/dev/null 2>&1 || exit 2
+    exec niri msg action close-window
+elif [ -n "${SWAYSOCK:-}" ] && swaymsg -t get_version >/dev/null 2>&1; then
+    exec swaymsg '[title="Wallpaper Picker"] kill'
+fi
+
+exit 2

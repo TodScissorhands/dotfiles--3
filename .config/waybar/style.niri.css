@@ -1,0 +1,23 @@
+@import url("/home/tod/.config/waybar/style.css");
+
+/* Niri reports visible workspaces as .active; Sway used .visible. */
+#workspaces button.active {
+    color: @light1;
+}
+
+#workspaces button.focused {
+    color: @accent;
+}
+
+#workspaces button.urgent {
+    color: @critical;
+}
+
+/* Keep the active empty workspace, but collapse unused persistent workspaces. */
+#workspaces button.empty:not(.active) {
+    font-size: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    opacity: 0;
+}

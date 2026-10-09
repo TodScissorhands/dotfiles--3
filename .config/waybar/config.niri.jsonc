@@ -1,0 +1,101 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 22,
+  "margin-top": 5,
+  "spacing": 0,
+  "reload_style_on_change": true,
+
+  "modules-left": ["group/left"],
+  "modules-center": ["clock"],
+  "modules-right": ["group/right"],
+
+  "group/left": {
+    "orientation": "horizontal",
+    "spacing": 0,
+    "modules": ["custom/power", "niri/workspaces", "mpris"]
+  },
+  "group/right": {
+    "orientation": "horizontal",
+    "spacing": 0,
+    "modules": ["pulseaudio", "bluetooth", "network", "battery", "custom/power-draw", "custom/sysinfo", "custom/warm-light"]
+  },
+
+  "niri/workspaces": {
+    "all-outputs": false,
+    "format": "{value}"
+  },
+  "clock": {
+    "format": "{:%H:%M}",
+    "format-alt": "{:%a %d %b}",
+    "tooltip-format": "<big>{:%B %Y}</big>\n<tt><small>{calendar}</small></tt>"
+  },
+  "mpris": {
+    "format": "♪ {title} – {artist}",
+    "format-paused": "⏸ {title}",
+    "max-length": 34,
+    "tooltip": false
+  },
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-bluetooth": "󰂯 {volume}%",
+    "format-muted": "󰖁",
+    "format-icons": { "default": ["󰖀", "󰕾"] },
+    "scroll-step": 1,
+    "on-click": "pavucontrol"
+  },
+  "bluetooth": {
+    "format": "󰂯",
+    "format-disabled": "󰂲",
+    "format-off": "󰂲",
+    "format-connected": "{device_alias}",
+    "format-connected-battery": "{device_alias} {device_battery_percentage}%",
+    "tooltip-format": "{controller_alias}\n{num_connections} connected",
+    "tooltip-format-connected": "{controller_alias}\n\n{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias} {device_address}",
+    "tooltip-format-enumerate-connected-battery": "{device_alias} {device_battery_percentage}%"
+  },
+  "network": {
+    "format-wifi": "{icon} {essid}",
+    "format-ethernet": "󰈀 {ipaddr}",
+    "format-disconnected": "󰤭",
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "tooltip-format-wifi": "{essid}\nSignal: {signalStrength}%\nIP: {ipaddr}",
+    "tooltip-format-disconnected": "Disconnected",
+    "on-click": "nm-connection-editor"
+  },
+  "battery": {
+    "interval": 60,
+    "states": { "warning": 30, "critical": 15 },
+    "format": "{icon} {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
+    "format-plugged": " {capacity}%",
+    "tooltip-format": "{timeTo}",
+    "format-icons": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁹"]
+  },
+  "custom/power-draw": {
+    "exec": "upower -i /org/freedesktop/UPower/devices/battery_BAT1 | awk -F':[[:space:]]*' '/energy-rate:/ {printf \"󱐋 %.1f W\\n\", $2}'",
+    "interval": 60,
+    "return-type": "text",
+    "tooltip": true,
+    "tooltip-format": "Current battery power rate (refreshed once per minute)"
+  },
+  "custom/sysinfo": {
+    "exec": "/home/tod/.local/bin/waybar-sysinfo",
+    "return-type": "json",
+    "interval": 10,
+    "on-click": "ghostty -e btop"
+  },
+  "custom/warm-light": {
+    "exec": "/home/tod/.local/bin/wlsunset-toggle --status",
+    "return-type": "json",
+    "interval": 10,
+    "on-click": "/home/tod/.local/bin/wlsunset-toggle --toggle"
+  },
+  "custom/power": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "/home/tod/.local/bin/fuzzel-hub || pkill -x fuzzel",
+    "on-click-right": "pkill -x fuzzel"
+  }
+}

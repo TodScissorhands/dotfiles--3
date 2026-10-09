@@ -1,0 +1,297 @@
+// Ask clients to omit client-side decorations (CSD) to match Sway's square tiled presentation.
+prefer-no-csd
+
+// Independent Niri configuration; ~/.config/sway/config remains the fallback.
+// Validated with Niri 26.04. Do not assume Sway's tree layout or IPC semantics.
+
+// Keep the active Sway keyboard defaults: US layout, 600 ms delay, 25 Hz.
+// Mouse settings are intentionally not configured.
+input {
+    keyboard {
+        xkb {
+            layout "us"
+        }
+        repeat-delay 600
+        repeat-rate 25
+    }
+
+    touchpad {
+        tap
+        middle-emulation
+        dwt
+        // natural-scroll is a presence-only flag; omit it to keep scrolling non-natural.
+    }
+    disable-power-key-handling
+
+    // Niri's native three-finger gesture switches workspaces vertically;
+    // horizontal swipes scroll the view. The old horizontal workspace swipe
+    // has no configurable Niri equivalent; see the migration report.
+    // No mouse configuration is added here.
+}
+
+// Preserve the observed 125% scale and inherit the monitor's preferred mode.
+output "eDP-1" {
+    scale 1.25
+}
+
+// Niri has one gap value (not separate inner/outer values).
+layout {
+    gaps 2
+    center-focused-column "never"
+    background-color "#19190b"
+
+    // Sway used 1px tiled borders and 2px floating borders.
+    // Niri has no smart-borders equivalent; its border remains when alone.
+    focus-ring {
+        off
+    }
+    border {
+        on
+        width 1
+    }
+}
+// Semantic colors are regenerated from the current pywal16 palette; Niri
+// watches included files and reloads when this generated file changes.
+include optional=true "/home/tod/.cache/wal/niri-colors.kdl"
+// The old Sway login can leave SWAYSOCK in the imported user-manager
+// environment. Keep it out of Niri-spawned applications.
+environment {
+    SWAYSOCK null
+}
+
+// Workspaces are dynamic by default (matching Sway).
+// Persistent workspace definitions 1-10 are commented out to prevent
+// empty workspaces from being reported over IPC and rendered in Waybar.
+// workspace "1"
+// workspace "2"
+// workspace "3"
+// workspace "4"
+// workspace "5"
+// workspace "6"
+// workspace "7"
+// workspace "8"
+// workspace "9"
+// workspace "10"
+
+// Remove stale Sway IPC state for Niri-owned user services, then restart the
+// portal frontend/backends so they inherit this session's environment.
+spawn-sh-at-startup "dbus-update-activation-environment SWAYSOCK= && systemctl --user unset-environment SWAYSOCK && systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.service xdg-desktop-portal-termfilechooser.service xdg-desktop-portal-wlr.service"
+// Preserve the Sway startup set without starting already systemd-managed
+// MPD, MPRIS, Mako, PipeWire, WirePlumber, or termfilechooser again.
+spawn-at-startup "awww-daemon" "--no-cache"
+spawn-at-startup "swayidle" "-w" "before-sleep" "/home/tod/.local/bin/tod-lock"
+spawn-at-startup "/home/tod/.config/fish/scripts/wallpaper-ctl.fish" "restore"
+spawn-at-startup "udiskie" "--tray"
+spawn-at-startup "waybar" "--config" "/home/tod/.config/waybar/config.niri.jsonc" "--style" "/home/tod/.config/waybar/style.niri.css"
+spawn-at-startup "/home/tod/.local/bin/wlsunset-toggle" "--start"
+spawn-sh-at-startup "wl-paste --watch cliphist store"
+spawn-at-startup "oniri" "--tiling-layout"
+
+// Lid-close locking mirrors the old Sway switch binding. tod-lock already
+// avoids starting a second swaylock when called while locked.
+switch-events {
+    lid-close {
+        spawn "/home/tod/.local/bin/tod-lock"
+    }
+}
+
+// Niri uses native Xwayland Satellite integration: create DISPLAY and start
+// the installed bridge on demand. Do not set DISPLAY manually.
+xwayland-satellite {
+    path "xwayland-satellite"
+}
+
+// Niri reloads this file when it changes; no Sway reload command is used.
+// Waybar gets a separate Niri-specific workspace module config so Sway's
+// existing ~/.config/waybar/config.jsonc remains intact for rollback.
+hotkey-overlay {
+    skip-at-startup
+}
+
+// Animation settings: fast, responsive, and smooth transitions
+animations {
+    // Smooth, responsive workspace switching (critically damped, no overshoot)
+    workspace-switch {
+        spring damping-ratio=1.0 stiffness=1000 epsilon=0.0001
+    }
+
+    // Smooth horizontal column scrolling
+    horizontal-view-movement {
+        spring damping-ratio=1.0 stiffness=900 epsilon=0.0001
+    }
+
+    // Smooth window repositioning/rearranging across columns and workspaces
+    window-movement {
+        spring damping-ratio=1.0 stiffness=850 epsilon=0.0001
+    }
+
+    // Fast, responsive transitions when resizing or toggling fullscreen/maximize
+    window-resize {
+        spring damping-ratio=1.0 stiffness=900 epsilon=0.0001
+    }
+
+    // Snappy, polished window opening transition
+    window-open {
+        duration-ms 150
+        curve "ease-out-expo"
+    }
+
+    // Crisp window closing transition
+    window-close {
+        duration-ms 120
+        curve "ease-out-quad"
+    }
+
+    // UI elements: config notifications and interactive screenshot UI
+    config-notification-open-close {
+        duration-ms 180
+        curve "ease-out-cubic"
+    }
+
+    screenshot-ui-open {
+        duration-ms 150
+        curve "ease-out-cubic"
+    }
+}
+
+// Reproduce Sway's portal file-picker placement. New floating windows are
+// centered by Niri by default; dimensions are logical pixels.
+window-rule {
+    match title="^(FileUploadPicker|Wallpaper Picker)$"
+    open-floating true
+    default-column-width { fixed 1000; }
+    default-window-height { fixed 700; }
+    border {
+        width 2
+    }
+}
+// Match Sway's thicker outline for any other floating window.
+window-rule {
+    match is-floating=true
+    border {
+        width 2
+    }
+}
+
+// Sway focused newly activated windows; Niri's default is token-aware (focus
+// for valid activation tokens, urgent otherwise). The newer always-focus rule
+// is intentionally not used because it is not in the installed 26.04 config.
+
+binds {
+    // Keep the system menu's safe logout/power workflows compositor-aware.
+    Mod+X { spawn "/home/tod/.local/bin/sys-menu"; }
+    // Preserve Super+Shift+C reload using Niri 26.04's IPC action.
+    Mod+Shift+C { spawn "niri" "msg" "action" "load-config-file"; }
+    // Applications and preserved everyday shortcuts.
+    Mod+Return { spawn "ghostty"; }
+    Mod+D { spawn "fuzzel"; }
+    Mod+M { spawn "/home/tod/.local/bin/rmpc-launch"; }
+    Mod+Shift+Y { spawn "ghostty" "-e" "yazi"; }
+    Mod+F { spawn "firefox"; }
+    Mod+Shift+Q { close-window; }
+    Mod+Shift+E { spawn "/home/tod/.local/bin/niri-confirm-action" "exit"; }
+    Mod+Escape { spawn "/home/tod/.local/bin/tod-lock"; }
+    XF86PowerOff allow-when-locked=true { spawn "/home/tod/.local/bin/niri-confirm-action" "poweroff"; }
+    Mod+Ctrl+P { spawn "pavucontrol"; }
+    Mod+O { spawn "/home/tod/.local/bin/audio-output"; }
+    Mod+Shift+V { spawn "/home/tod/.local/bin/cliphist-picker"; }
+    Mod+Alt+W { spawn "/home/tod/.config/fish/scripts/wallpaper-picker.fish"; }
+    Mod+Shift+W { spawn "/home/tod/.config/fish/scripts/wallpaper-next.fish"; }
+
+    // Keep the current warpd calls. Their process lock wrapper is compositor-
+    // independent; verify their pointer grabs during the first Niri session.
+    Mod+Alt+X { spawn "/home/tod/.local/bin/warpd-sway" "--hint" "--oneshot" "--click" "1"; }
+    Mod+Alt+C { spawn "/home/tod/.local/bin/warpd-sway" "--normal"; }
+    Mod+Alt+G { spawn "/home/tod/.local/bin/warpd-sway" "--grid"; }
+    Mod+Alt+Escape allow-when-locked=true { spawn "pkill" "-KILL" "-x" "warpd"; }
+
+    // Directional focus: Niri moves horizontally between columns and
+    // vertically between windows inside the current column.
+    Mod+H { focus-column-left; }
+    Mod+J { focus-window-down; }
+    Mod+K { focus-window-up; }
+    Mod+L { focus-column-right; }
+    Mod+Left { focus-column-left; }
+    Mod+Down { focus-window-down; }
+    Mod+Up { focus-window-up; }
+    Mod+Right { focus-column-right; }
+
+    // Preserve the Sway Mod+Shift directional movement modifier. Niri moves
+    // columns horizontally and individual windows vertically within columns.
+    Mod+Shift+H { move-column-left; }
+    Mod+Shift+J { move-window-down; }
+    Mod+Shift+K { move-window-up; }
+    Mod+Shift+L { move-column-right; }
+    Mod+Shift+Left { move-column-left; }
+    Mod+Shift+Down { move-window-down; }
+    Mod+Shift+Up { move-window-up; }
+    Mod+Shift+Right { move-column-right; }
+
+    // Niri-native dynamic workspace index targets.
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+    Mod+0 { focus-workspace 10; }
+    Mod+Shift+1 { move-column-to-workspace 1; }
+    Mod+Shift+2 { move-column-to-workspace 2; }
+    Mod+Shift+3 { move-column-to-workspace 3; }
+    Mod+Shift+4 { move-column-to-workspace 4; }
+    Mod+Shift+5 { move-column-to-workspace 5; }
+    Mod+Shift+6 { move-column-to-workspace 6; }
+    Mod+Shift+7 { move-column-to-workspace 7; }
+    Mod+Shift+8 { move-column-to-workspace 8; }
+    Mod+Shift+9 { move-column-to-workspace 9; }
+    Mod+Shift+0 { move-column-to-workspace 10; }
+    Mod+Tab { focus-workspace-previous; }
+
+    // Niri-native sizing. There is no Sway-style modal resize mode; R cycles
+    // preset column widths, while Ctrl+direction changes width/height directly.
+    Mod+R { switch-preset-column-width; }
+    Mod+Shift+R { switch-preset-column-width-back; }
+    Mod+Ctrl+H { set-column-width "-10%"; }
+    Mod+Ctrl+Left { set-column-width "-10%"; }
+    Mod+Ctrl+L { set-column-width "+10%"; }
+    Mod+Ctrl+Right { set-column-width "+10%"; }
+    Mod+Ctrl+K { set-window-height "-10%"; }
+    Mod+Ctrl+Up { set-window-height "-10%"; }
+    Mod+Ctrl+J { set-window-height "+10%"; }
+    Mod+Ctrl+Down { set-window-height "+10%"; }
+
+    // Niri-native layout/floating controls. Sway's split-tree operations and
+    // scratchpad have no direct Niri equivalent; see comments below.
+    Mod+W { toggle-column-tabbed-display; }
+    Mod+Shift+Space { toggle-window-floating; }
+    Mod+Space { switch-focus-between-floating-and-tiling; }
+    Mod+Shift+F { fullscreen-window; }
+    // TODO(scratchpad): Niri 26.04 has no Sway scratchpad action. Do not
+    // approximate it with a workspace; choose a separate workflow later.
+
+    // Preserve volume, mute, microphone, brightness and output controls.
+    XF86AudioMute allow-when-locked=true { spawn "pactl" "set-sink-mute" "@DEFAULT_SINK@" "toggle"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "wpctl" "set-volume" "-l" "2.0" "@DEFAULT_AUDIO_SINK@" "5%-"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "wpctl" "set-volume" "-l" "2.0" "@DEFAULT_AUDIO_SINK@" "5%+"; }
+    XF86AudioMicMute allow-when-locked=true { spawn "pactl" "set-source-mute" "@DEFAULT_SOURCE@" "toggle"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "5%-"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "set" "+5%"; }
+
+    // Guard media controls so they act only while the RMPC terminal is open.
+    XF86AudioPlay allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "togglepause"; }
+    XF86AudioPause allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "togglepause"; }
+    XF86AudioPrev allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "prev"; }
+    XF86AudioNext allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "next"; }
+    XF86AudioStop allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "stop"; }
+    F9 allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "play"; }
+    F10 allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "togglepause"; }
+    F11 allow-when-locked=true { spawn "/home/tod/.local/bin/rmpc-session" "media" "next"; }
+
+
+    // Preserve screenshot names, destination and clipboard behavior.
+    Mod+P { spawn-sh "dir=/home/tod/Pictures/Screenshots; mkdir -p \"$dir\"; file=\"$dir/Screenshot-$(date +%F-%H%M%S).png\"; grim -g \"$(slurp)\" \"$file\" && wl-copy --type image/png < \"$file\""; }
+    Mod+Shift+P { spawn-sh "dir=/home/tod/Pictures/Screenshots; mkdir -p \"$dir\"; file=\"$dir/Screenshot-$(date +%F-%H%M%S).png\"; grim \"$file\" && wl-copy --type image/png < \"$file\""; }
+}

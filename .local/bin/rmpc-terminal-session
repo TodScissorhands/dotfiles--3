@@ -1,8 +1,7 @@
 #!/bin/sh
 
-# Run RMPC tied to its Sway/Ghostty window. Some terminal-close paths do not
-# forward a signal to child processes, so watch the window and stop MPD when
-# it disappears.
+# Run RMPC tied to its Ghostty window. Some terminal-close paths do not forward
+# a signal to child processes, so watch the compositor window and stop MPD when it disappears.
 /usr/bin/rmpc "$@" &
 child=$!
 
@@ -13,10 +12,12 @@ stop_and_exit() {
 }
 trap stop_and_exit EXIT HUP INT TERM
 
-# Give Ghostty/Sway time to register the window before checking it.
+# Give Ghostty and the active compositor time to register the window.
 sleep 1
 while kill -0 "$child" 2>/dev/null; do
-    if ! swaymsg -t get_tree 2>/dev/null | grep -Fq '"name": "rmpc-stop-on-exit"'; then
+    /home/tod/.local/bin/rmpc-session exists >/dev/null 2>&1
+    status=$?
+    if [ "$status" -eq 1 ]; then
         exit 0
     fi
     sleep 0.5

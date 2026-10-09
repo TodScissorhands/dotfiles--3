@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# Identify and control the single RMPC terminal window under Sway or Niri.
+TITLE=rmpc-stop-on-exit
+
+niri_window_id() {
+    windows=$(niri msg --json windows 2>/dev/null) || return 2
+    id=$(printf '%s\n' "$windows" \
+        | jq -r --arg title "$TITLE" '
+            if type != "array" then error("expected Niri windows array")
+            else first(.[] | select(.title == $title) | .id) // empty
+            end' 2>/dev/null) || return 2
+    [ -n "$id" ] || return 1
+    printf '%s\n' "$id"
+}
+
+sway_window_id() {
+    tree=$(swaymsg -t get_tree 2>/dev/null) || return 2
+    id=$(printf '%s\n' "$tree" \
+        | jq -r --arg title "$TITLE" 'first(.. | objects | select(.name? == $title) | .id) // empty' 2>/dev/null) || return 2
+    [ -n "$id" ] || return 1
+    printf '%s\n' "$id"
+}
+
+window_id() {
+    if [ -n "${NIRI_SOCKET:-}" ] && niri msg version >/dev/null 2>&1; then
+        niri_window_id
+    elif [ -n "${SWAYSOCK:-}" ] && swaymsg -t get_version >/dev/null 2>&1; then
+        sway_window_id
+    else
+        return 2
+    fi
+}
+
+case "${1:-}" in
+    exists)
+        id=$(window_id)
+        status=$?
+        [ "$status" -eq 0 ] || exit "$status"
+        [ -n "$id" ]
+        ;;
+    focus)
+        id=$(window_id)
+        status=$?
+        [ "$status" -eq 0 ] || exit "$status"
+        if [ -n "${NIRI_SOCKET:-}" ] && niri msg version >/dev/null 2>&1; then
+            niri msg action focus-window --id "$id" >/dev/null 2>&1 || exit 2
+        else
+            swaymsg "[title=\"$TITLE\"] focus" >/dev/null 2>&1 || exit 2
+        fi
+        ;;
+    media)
+        shift
+        [ "$#" -gt 0 ] || exit 2
+        id=$(window_id)
+        status=$?
+        [ "$status" -eq 0 ] || exit "$status"
+        exec /usr/bin/rmpc "$@"
+        ;;
+    *)
+        printf 'Usage: %s {exists|focus|media <rmpc-command>...}\n' "$0" >&2
+        exit 2
+        ;;
+esac

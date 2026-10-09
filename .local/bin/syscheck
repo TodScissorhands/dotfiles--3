@@ -1,7 +1,7 @@
 #!/bin/sh
 # System diagnostic — adapted from BreadOnPenguins/scripts shell/stats.
 # Upstream: basic stats dump piped through bat.
-# This version: structured OK/WARN/FAIL checks for Arch + Sway.
+# This version: structured OK/WARN/FAIL checks for Arch + Sway/Niri.
 
 # Pre-compute ANSI sequences as real escape bytes.
 ESC=$(printf '\033')
@@ -61,7 +61,16 @@ NET_IF=$(ip -brief addr 2>/dev/null | awk '$1 != "lo" && $2 == "UP" { printf "%s
 # ─── Services ────────────────────────────────────────────────
 PW_VER=$(pw-cli --version 2>/dev/null | awk '/libpipewire/ { print $NF; exit }')
 WP_PID=$(pgrep -x wireplumber 2>/dev/null)
-SWAY_VER=$(swaymsg -t get_version 2>/dev/null | jq -r '.human_readable')
+if [ -n "${NIRI_SOCKET:-}" ] && niri msg version >/dev/null 2>&1; then
+    COMPOSITOR_NAME=Niri
+    COMPOSITOR_VER=$(niri msg version 2>/dev/null)
+elif [ -n "${SWAYSOCK:-}" ] && swaymsg -t get_version >/dev/null 2>&1; then
+    COMPOSITOR_NAME=Sway
+    COMPOSITOR_VER=$(swaymsg -t get_version 2>/dev/null | jq -r '.human_readable')
+else
+    COMPOSITOR_NAME=''
+    COMPOSITOR_VER=''
+fi
 WAYBAR_PID=$(pgrep -x waybar 2>/dev/null)
 
 # ─── System info (upstream: uname, pacman stat) ──────────────
@@ -126,10 +135,10 @@ if [ -n "$WP_PID" ]; then
 else
     printf '  [%s]  WirePlumber not running\n' "$FAIL"
 fi
-if [ -n "$SWAY_VER" ]; then
-    printf '  [%s]  Sway %s\n' "$OK" "$SWAY_VER"
+if [ -n "$COMPOSITOR_VER" ]; then
+    printf '  [%s]  %s %s\n' "$OK" "$COMPOSITOR_NAME" "$COMPOSITOR_VER"
 else
-    printf '  [%s]  Sway not reachable\n' "$FAIL"
+    printf '  [%s]  No compositor IPC session detected\n' "$WARN"
 fi
 if [ -n "$WAYBAR_PID" ]; then
     printf '  [%s]  Waybar (pid %s)\n' "$OK" "$WAYBAR_PID"

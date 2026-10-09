@@ -1,9 +1,12 @@
 #!/bin/sh
 
-# Keep Super+M single-instance while leaving direct `rmpc` CLI commands alone.
-if swaymsg -t get_tree 2>/dev/null | grep -Fq '"name": "rmpc-stop-on-exit"'; then
-    swaymsg '[title="rmpc-stop-on-exit"] focus' >/dev/null 2>&1
-    exit 0
-fi
+# Reuse and focus the RMPC terminal when one is already open in this compositor.
+/home/tod/.local/bin/rmpc-session focus >/dev/null 2>&1
+status=$?
+case "$status" in
+    0) exit 0 ;;
+    1) ;;
+    *) exit "$status" ;;
+esac
 
 exec /usr/bin/ghostty --title=rmpc-stop-on-exit -e /home/tod/.local/bin/rmpc-terminal-session

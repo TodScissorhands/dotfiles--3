@@ -1,0 +1,33 @@
+#!/bin/sh
+# Fail-closed confirmation prompts for Niri session exit and poweroff.
+set -u
+
+mode=${1-}
+case "$mode" in
+    exit)
+        prompt='Exit Niri? '
+        confirmation='Exit Niri'
+        ;;
+    poweroff)
+        prompt='Power off this laptop? '
+        confirmation='Power off'
+        ;;
+    *)
+        exit 2
+        ;;
+esac
+
+if ! choice=$(printf '%s\n' 'Cancel' "$confirmation" | /usr/bin/fuzzel --dmenu --no-sort --only-match --select-index=0 --lines=2 --minimal-lines --prompt="$prompt"); then
+    exit 0
+fi
+
+[ "$choice" = "$confirmation" ] || exit 0
+
+case "$mode" in
+    exit)
+        exec /usr/bin/niri msg action quit
+        ;;
+    poweroff)
+        exec /usr/bin/systemctl poweroff
+        ;;
+esac

@@ -2,12 +2,12 @@
 # System control menu — Yazi/TUI Command Palette format
 
 choice=$(printf '%s\n' \
-  "lock	  lock     │ Lock session with swaylock inhibitor      [Super+Escape]" \
+  "lock	  lock     │ Lock session with swaylock     [Super+Escape]" \
   "suspend	󰤄  suspend  │ Sleep system to RAM (locks screen first)" \
   "reboot	󰜉  reboot   │ Gracefully restart operating system" \
   "shutdown	  shutdown │ Safely power off system hardware" \
-  "logout	󰍃  logout   │ Terminate current Sway compositor session" \
-  "reload	󰑐  reload   │ Reload Sway window manager configuration   [Super+Shift+C]" \
+  "logout	󰍃  logout   │ Terminate active compositor session" \
+  "reload	󰑐  reload   │ Reload active compositor configuration" \
   "kill	󰓛  kill     │ Process killer (search and terminate by PID)" \
   | fuzzel -d \
       --prompt="SYS ❯ " \
@@ -26,8 +26,24 @@ case "$choice" in
     suspend)  /home/tod/.local/bin/tod-lock & sleep 1 && systemctl suspend -i ;;
     reboot)   systemctl reboot -i ;;
     shutdown) systemctl poweroff -i ;;
-    logout)   swaymsg exit ;;
-    reload)   swaymsg reload ;;
+    logout)
+        if [ -n "${NIRI_SOCKET:-}" ] && niri msg version >/dev/null 2>&1; then
+            /home/tod/.local/bin/niri-confirm-action exit
+        elif [ -n "${SWAYSOCK:-}" ] && swaymsg -t get_version >/dev/null 2>&1; then
+            swaymsg exit
+        else
+            exit 1
+        fi
+        ;;
+    reload)
+        if [ -n "${NIRI_SOCKET:-}" ] && niri msg version >/dev/null 2>&1; then
+            niri msg action load-config-file
+        elif [ -n "${SWAYSOCK:-}" ] && swaymsg -t get_version >/dev/null 2>&1; then
+            swaymsg reload
+        else
+            exit 1
+        fi
+        ;;
     kill)
         proc=$(ps -u "$USER" -o pid=,comm=,%cpu=,%mem= --sort=-%cpu \
               | awk '{printf "%s\t󰅩  %-16s │ CPU: %5s%% · MEM: %5s%%\n", $1, $2, $3, $4}' \

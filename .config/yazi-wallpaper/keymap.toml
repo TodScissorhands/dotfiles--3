@@ -8,10 +8,10 @@ desc = "Go to mounted drives"
 # Yazi reads keymap.toml from YAZI_CONFIG_HOME
 [[mgr.prepend_keymap]]
 on = [ "w" ]
-run = 'shell -- test -f %h && /home/tod/.config/fish/scripts/wallpaper-ctl.fish set-path %h && swaymsg "[title=\"Wallpaper Picker\"] kill"'
+run = 'shell -- test -f %h && /home/tod/.config/fish/scripts/wallpaper-ctl.fish set-path %h && /home/tod/.local/bin/wallpaper-picker-close'
 desc = "Set hovered image as wallpaper"
 
 [[mgr.prepend_keymap]]
 on = [ "<Esc>" ]
-run = 'shell -- swaymsg "[title=\"Wallpaper Picker\"] kill"'
+run = 'shell -- /home/tod/.local/bin/wallpaper-picker-close'
 desc = "Close wallpaper picker without selecting"
