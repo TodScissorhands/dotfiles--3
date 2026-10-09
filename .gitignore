@@ -3,3 +3,21 @@
 
 # Prevent Stage backups from being committed
 /.config/wal/backups-*/
+/.config/wal/backup-*
+
+# Prevent wallpaper directories and media assets from being tracked
+/.config/wallpapers/
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.mp4
+
+# Editor and temporary files
+*~
+*.bak
+*.bak.*
+*.tmp
+*.swp
+*.swo
